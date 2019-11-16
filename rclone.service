@@ -1,0 +1,27 @@
+[Unit]
+Description=RClone Service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=notify
+Environment=RCLONE_CONFIG=/home/dulanic/.config/rclone/rclone.conf
+KillMode=none
+RestartSec=5
+ExecStart=/usr/bin/rclone mount decrypt: /GD \
+--allow-other \
+--attr-timeout 1000h \
+--buffer-size 128M \
+--dir-cache-time 1000h \
+--log-level INFO \
+--log-file /opt/rclone/logs/rclone.log \
+--poll-interval 15s \
+--timeout 1h \
+--umask 002 
+ExecStop=/usr/bin/fusermount -uz /GD
+Restart=on-failure
+User=dulanic
+Group=dulanic
+
+[Install]
+WantedBy=multi-user.target

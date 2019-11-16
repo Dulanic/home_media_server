@@ -1,0 +1,10 @@
+#!/bin/bash
+# RClone Config file
+RCLONE_CONFIG=/home/dulanic/.config/rclone/rclone.conf
+export RCLONE_CONFIG
+
+#exit if running
+if [[ "`pidof -x $(basename $0) -o %PPID`" ]]; then exit; fi
+
+# Move older local files to the cloud
+/usr/bin/rclone move /mnt/media/Media decrypt:Media --log-file /opt/rclone/logs/upload.log -v --exclude-from /opt/rclone/scripts/excludes --delete-empty-src-dirs --fast-list --max-transfer 700G --bwlimit 30M --transfers 2
