@@ -1,2 +1,2 @@
 # home_media_server
-In progress
+Scripts for mergerfs/rclone mounting areas and services
