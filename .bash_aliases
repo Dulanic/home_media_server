@@ -29,6 +29,6 @@ alias ll='ls -alh'
 alias dirsize='sudo du -hx --max-depth=1'
 alias update='sudo apt update && sudo apt upgrade'
 alias cpr='sudo cp --reflink=always'
-
 # OTHER
+alias cat='bat'
 alias ls='exa'
