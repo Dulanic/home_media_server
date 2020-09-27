@@ -8,17 +8,23 @@ Type=notify
 Environment=RCLONE_CONFIG=/home/dulanic/.config/rclone/rclone.conf
 KillMode=none
 RestartSec=5
-ExecStart=/usr/bin/rclone mount decrypt: /GD \
+ExecStart=/usr/bin/rclone mount decrypt:Media /mnt/gd \
 --allow-other \
 --attr-timeout 1000h \
 --buffer-size 128M \
 --dir-cache-time 1000h \
 --log-level INFO \
---log-file /opt/rclone/logs/rclone.log \
+--no-modtime \
+--vfs-cache-mode full \
+--cache-tmp-upload-path /mnt/btrfs/rclone \
+--cache-dir=/mnt/btrfs/rclone/cache \
+--vfs-cache-max-size 100G \
+--cache-tmp-wait-time 1s \
 --poll-interval 15s \
+--log-file /var/log/rclone.log \
 --timeout 1h \
---umask 002 
-ExecStop=/usr/bin/fusermount -uz /GD
+--umask 022 
+ExecStop=/usr/bin/fusermount -uz /mnt/gd
 Restart=on-failure
 User=dulanic
 Group=dulanic
