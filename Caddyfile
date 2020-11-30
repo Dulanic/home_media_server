@@ -1,0 +1,216 @@
+{
+  default_sni dulanic.com
+  acme_ca https://acme-v02.api.letsencrypt.org/directory
+  email {$ACMEEMAIL}
+}
+(proxyheaders) {
+  header_up Host {host}
+  header_up X-Real-IP {http.request.header.CF-Connecting-IP}
+  header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+  header_up X-Forwarded-Proto {scheme}
+  header_up X-Forwarded-Host {host}
+  header_up X-Forwarded-Ssl {on}
+}
+(logs) {
+log {
+	output file /config/caddy/caddy.log {
+		roll_size     200MiB
+		roll_keep     10
+		roll_keep_for 2160h
+	}
+	level error
+	}
+}
+(tlscf) {
+  tls {
+    on_demand
+    dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+  }
+}
+(XAUTH) {
+  basicauth {
+    {$XAUTH}
+  }
+}
+(ASAK) {
+  basicauth {
+    {$ASAK}
+  }
+}
+https://dulanic.com {
+  import tlscf
+  import logs
+  root * /www/websites/dulanic.com
+  file_server
+  redir /img /img/
+  handle_path /img/* {
+    root * /www/img
+    file_server
+  }  
+  redir /files /files/
+  handle_path /files/* {
+    root * /www/files
+    file_server browse
+  }  
+}
+https://irc.dulanic.com {
+  import tlscf
+  import logs
+  reverse_proxy irc:9000 {
+    import proxyheaders
+  }
+}
+https://pghero.dulanic.com {
+  import tlscf
+  import logs
+  import XAUTH
+  reverse_proxy pghero:8080 {
+    import proxyheaders
+  }
+}
+https://qbittorrent.dulanic.com {
+  import tlscf
+  import logs
+  @NoAccess not path /api*
+  basicauth @NoAccess {
+    {$XAUTH}
+  }
+  reverse_proxy wireguard:8089 {
+    header_up X-Forwarded-Host {host}:8089
+    header_up -Origin
+    header_up -Referer
+  } 
+}
+https://radarr.dulanic.com {
+  import tlscf
+  import logs
+  import XAUTH
+  reverse_proxy radarr:7878 {
+    import proxyheaders
+  }
+} 
+https://backup.dulanic.com {
+  import tlscf
+  import logs
+  import XAUTH
+  reverse_proxy duplicati:8200 {
+    import proxyheaders
+  }
+} 
+https://radarr4k.dulanic.com {
+  import tlscf
+  import logs
+  import XAUTH
+  reverse_proxy radarr4k:7878 {
+    import proxyheaders
+  }
+} 
+https://code.dulanic.com {
+  import tlscf
+  import logs
+  import XAUTH
+  reverse_proxy code-server:8443 {
+    import proxyheaders
+  }
+}
+https://teslamate.dulanic.com {
+  import tlscf
+  import logs
+  import XAUTH
+  reverse_proxy teslamate:4000 {
+    import proxyheaders
+  }
+}
+https://homeassistant.dulanic.com {
+  import tlscf
+  import logs
+  reverse_proxy http://192.168.2.155:8123 {
+    import proxyheaders
+  }
+}
+https://tautulli.dulanic.com {
+  import tlscf
+  import logs
+  import XAUTH
+  reverse_proxy tautulli:8181 {
+    import proxyheaders
+  }
+} 
+ 
+https://grafana.dulanic.com {
+  import tlscf
+  import logs
+  #import XAUTH
+  reverse_proxy grafana:3000 {
+    import proxyheaders
+  }
+}  
+https://jackett.dulanic.com {
+  import tlscf
+  import logs
+  basicauth /jackett/UI* {
+    {$XAUTH}
+  }  
+  reverse_proxy jackett:9117 {
+    import proxyheaders
+  }
+}  
+https://sonarr.dulanic.com {
+  import tlscf
+  import logs
+  import XAUTH
+  reverse_proxy sonarr:8989 {
+    import proxyheaders
+  }
+} 
+https://ombi.dulanic.com {
+  import tlscf
+  import logs
+  reverse_proxy ombi:3579 {
+    import proxyheaders
+  }
+} 
+https://lidarr.dulanic.com {
+  import tlscf
+  import logs
+  import XAUTH
+  reverse_proxy lidarr:8686 {
+    import proxyheaders
+  }
+}
+https://plex.dulanic.com {
+  import tlscf
+  import logs
+  reverse_proxy 192.168.2.155:32400 {
+    flush_interval -1	
+    import proxyheaders
+  }
+}
+https://pgadmin.dulanic.com {
+  import tlscf
+  import logs
+  reverse_proxy pgadmin:5050 {
+    import proxyheaders
+  }
+} 
+https://wiki.dulanic.com {
+  import tlscf
+  import logs
+  reverse_proxy wikijs:3000 {
+    import proxyheaders
+  }
+}  
+https://nextcloud.dulanic.com {
+  import tlscf
+  import logs  
+  reverse_proxy nextcloud:443 {
+	  import proxyheaders
+      transport http {
+        tls_insecure_skip_verify
+      }
+  }
+  header {
+        Strict-Transport-Security max-age=31536000;
+  }
+  redir /.well-known/webfinger /public.php?service=webfinger 301
+} 
