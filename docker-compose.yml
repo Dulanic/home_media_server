@@ -1,0 +1,392 @@
+version: "3.4"
+services:
+  code-server:
+    image: linuxserver/code-server:latest
+    container_name: vscode
+    restart: unless-stopped
+    env_file:
+      - ./envs/main.env
+      - ./envs/vscode.env
+    volumes:
+      - ./vscode/config:/config # Contains all relevant configuration files.
+      - /opt/python_scripts:/opt/python_scripts #python_scripts
+      - /mnt/ssd/docker:/mnt/ssd/docker
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 8443:8443/tcp # Web UI  
+  unpackerr:
+    image: golift/unpackerr
+    container_name: unpackerr    
+    env_file:
+      - ./envs/main.env
+      - ./envs/unpackerr.env
+    volumes:
+      - /mnt/btrfs:/mnt/btrfs
+    restart: unless-stopped
+  duplicati:
+    image: linuxserver/duplicati
+    hostname: backup.dulanic.com
+    container_name: duplicati
+    env_file:
+      - ./envs/main.env
+    volumes:
+      - ./duplicati:/config
+      - /mnt/usb-ext:/mnt/usb-ext
+      - /:/source:ro
+    ports:
+      - 8204:8200
+    restart: unless-stopped
+  caddy:
+    image: dulanic/caddy:latest
+    container_name: caddy
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ    
+      - CLOUDFLARE_API_TOKEN=$CF_API_KEY
+      - XAUTH=$XAUTH
+      - ASAK=$ASAK
+      - ACMEEMAIL=$CLOUDFLARE_EMAIL
+    ports:
+      - "443:443"
+      - "80:80"
+    cap_add:
+      - NET_ADMIN   
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/images:/www/img:ro
+      - ./caddy/data:/data
+      - ./caddy/www:/www
+      - ./caddy/files:/www/files:ro
+      - ./caddy/config:/config
+    restart: unless-stopped  
+  wiki:
+    image: requarks/wiki:2
+    container_name: wikijs
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_USER: $WIKIDBUSER
+      DB_PASS: $WIKIDBPASS
+      DB_NAME: wiki
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ         
+    volumes:
+      - ./wikijs:/config
+      - /mnt/btrfs/wiki:/wiki/data      
+      - /mnt/btrfs/wiki/data/content:/wiki/data/content
+    restart: unless-stopped
+    depends_on:
+      - database
+  lidarr:
+    image: linuxserver/lidarr
+    container_name: lidarr
+    env_file:
+      - ./envs/main.env
+    volumes:
+      - ./lidarr:/config
+      - /mnt/btrfs/music:/mnt/btrfs/music
+      - /mnt/btrfs/downloads/torrent:/mnt/btrfs/downloads/torrent
+    ports:
+      - 8686:8686
+    restart: unless-stopped
+  wireguard:
+    image: linuxserver/wireguard:v1.0.20200827-ls34
+    container_name: wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    env_file:
+      - ./envs/main.env
+    volumes:
+      - ./wireguard:/config
+      - /lib/modules:/lib/modules
+    ports:
+      - 6881:6881
+      - 6881:6881/udp
+      - 8089:8089
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+  wireguardserver:
+    image: linuxserver/wireguard:latest
+    container_name: wireguardserver
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    env_file:
+      - ./envs/main.env
+      - ./envs/wireguardserv.env
+    volumes:
+      - ./wireguardserver:/config
+      - /lib/modules:/lib/modules
+    ports:
+      - 51820:51820/udp
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+  qbittorrent:
+    image: linuxserver/qbittorrent:14.2.5.99202004250119-7015-2c65b79ubuntu18.04.1-ls91
+    container_name: qbittorrent
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+      - UMASK_SET=022
+      #Remember to make this the same port as the exposed port
+      - WEBUI_PORT=8089
+    depends_on:
+      - wireguard      
+    volumes:
+      - ./qbittorrent:/config
+      - /mnt/btrfs/downloads:/mnt/btrfs/downloads
+      - /mnt/btrfs/downloads:/downloads
+    restart: unless-stopped
+    network_mode: "service:wireguard"
+  thelounge:
+    image: thelounge/thelounge:latest
+    container_name: irc
+    restart: unless-stopped
+    env_file:
+      - ./envs/main.env
+    volumes:
+      - ./thelounge:/var/opt/thelounge
+  cloudflare-ddns:
+    image: oznu/cloudflare-ddns:latest
+    container_name: cf_ddns
+    restart: always
+    environment:
+      - API_KEY=$CF_API_KEY
+      - ZONE=$DOMAIN
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    environment:
+      TZ: $TZ
+      PGADMIN_DEFAULT_EMAIL: $USEREMAIL
+      PGADMIN_DEFAULT_PASSWORD: $PGADMIN_DEFAULT_PASSWORD
+      PGADMIN_LISTEN_PORT: 5050
+    volumes:
+      - ./pgadmin/storage:/var/lib/pgadmin 
+      - ./pgadmin/config_local.py:/pgadmin4/config_local.py
+      - ./pgadmin/pgadmin4.log:/var/lib/pgadmin/pgadmin4.log
+      - ./import:/import
+    restart: unless-stopped
+  jackett:
+    image: linuxserver/jackett:latest
+    container_name: jackett
+    env_file:
+      - ./jackett/jackett.env
+    volumes:
+      - ./jackett/config:/config
+      - /etc/localtime:/etc/localtime
+    restart: unless-stopped
+  radarr4K:
+    image: linuxserver/radarr:nightly
+    container_name: radarr4K
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - ./radarr4K:/config
+      - /mnt:/mnt
+    ports:
+      - 7879:7878
+    depends_on:
+      - caddy
+      - qbittorrent
+    environment:
+      - TZ=$TZ
+      - PGID=$PUID
+      - PUID=$PUID
+    restart: unless-stopped
+  radarr:
+    image: linuxserver/radarr:nightly
+    container_name: radarr
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - ./radarr:/config
+      - /mnt/:/mnt
+    depends_on:
+      - caddy
+    ports:
+      - 7878:7878 
+    environment:
+      - TZ=$TZ
+      - PGID=$PUID
+      - PUID=$PUID
+    restart: unless-stopped
+  sonarr:
+    image: linuxserver/sonarr:preview
+    container_name: sonarr
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - ./sonarr:/config
+      - /mnt:/mnt
+    depends_on:
+      - caddy
+    environment:
+      - TZ=$TZ
+      - PGID=$PUID
+      - PUID=$PUID
+    restart: unless-stopped
+  tautulli:
+    image: linuxserver/tautulli:latest
+    container_name: tautulli
+    volumes:
+      - ./tautulli/config:/config
+      - ./plex/Library/Application Support/Plex Media Server/Logs:/logs
+    ports:
+      - 8181:8181
+    depends_on:
+      - caddy
+      - plex
+    environment:
+      - TZ=$TZ
+      - PGID=$PUID
+      - PUID=$PUID
+    restart: unless-stopped
+  portainer:
+    image: portainer/portainer-ce
+    container_name: portainer
+    ports:
+      - 9001:9000
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+    command: -H unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer:/data
+      - /etc/localtime:/etc/localtime  
+    restart: unless-stopped
+  plex:
+    image: linuxserver/plex:latest
+    container_name: plex
+    environment:
+      - TZ=$TZ
+      - PGID=$PUID
+      - PUID=$PUID
+    network_mode: host
+    devices:
+      - /dev/dri 
+    volumes:
+      - ./plex:/config
+      - /dev/shm:/transcode
+      - /mnt:/mnt
+      - /mnt/gd/DVR:/dvr
+    restart: unless-stopped
+  ombi:
+    image: linuxserver/ombi:v4-preview
+    container_name: ombi
+    environment:
+      - PUID=$PUID
+      - PGID=$PUID
+      - TZ=$TZ
+    depends_on:
+      - caddy
+    volumes:
+      - ./ombi:/config
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro    
+    restart: unless-stopped
+  nextcloud:
+    image: linuxserver/nextcloud:latest
+    container_name: nextcloud
+    environment:
+      - PUID=$PUID
+      - PGID=$PUID
+      - TZ=$TZ
+    ports:
+      - "444:443"
+    depends_on:
+      - caddy
+      - database     
+    volumes:
+      - ./nextcloud:/config
+      - $BTRFS/nextcloud:/data
+      - /mnt/gd/nextcloud:/gd
+    restart: unless-stopped
+  teslamate:
+    image: teslamate/teslamate:edge
+    container_name: teslamate 
+    restart: unless-stopped
+    env_file:
+      - ./teslamate/teslamate.env
+    depends_on:
+      - caddy
+    cap_drop:
+      - all
+  database:
+    image: postgres:13
+    shm_size: 1gb   
+    restart: unless-stopped
+    container_name: postgresql
+    env_file:
+      - ./envs/postgres.env
+    volumes:
+      - ./postgresql/data:/var/lib/postgresql/data
+      - ./import:/import
+    command: postgres -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all -c max_connections=200
+    ports:
+      - 5432:5432
+  pghero:
+    image: ankane/pghero:v2.6.0
+    container_name: pghero
+    restart: unless-stopped
+    environment:
+      TZ: $TZ
+      DATABASE_URL: $DB_URL
+    volumes:
+      - ./pghero/pghero.yml:/app/config/pghero.yml:ro
+  grafana:
+    image: teslamate/grafana:edge
+    restart: unless-stopped
+    container_name: grafana
+    env_file:
+      - ./envs/grafana.env
+    user: "1000"
+    depends_on:
+      - caddy
+    volumes:
+      - ./grafana/config:/var/lib/grafana
+  mosquitto:
+    image: eclipse-mosquitto:1.6
+    container_name: mosquitto
+    restart: unless-stopped
+    environment:
+      - TZ=$TZ
+      - PGID=$PUID
+      - PUID=$PUID    
+    ports:
+      - 1883:1883
+    volumes:
+      - mosquitto-conf:/mosquitto/config
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+  homeassistant:
+    container_name: homeassistant
+    image: homeassistant/home-assistant:stable 
+    network_mode: "host"
+    environment:
+      - TZ=$TZ
+      - PGID=$PUID
+      - PUID=$PUID
+    depends_on:
+      - database
+    ports: 
+      - 8123:8123
+    volumes:
+      - ./homeassistant:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /home:/home
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8123"]
+      interval: 30s
+      timeout: 10s
+      retries: 6
+volumes:
+    mosquitto-conf:
+    mosquitto-data:
+    mosquitto-log:
