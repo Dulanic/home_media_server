@@ -14,7 +14,7 @@ ExecStart=/usr/bin/rclone mount decrypt:Media /mnt/gd \
 --buffer-size 128M \
 --dir-cache-time 1000h \
 --log-level INFO \
---no-modtime \
+#--no-modtime \
 --vfs-cache-mode full \
 --cache-tmp-upload-path /mnt/btrfs/rclone \
 --cache-dir=/mnt/btrfs/rclone/cache \
@@ -22,6 +22,7 @@ ExecStart=/usr/bin/rclone mount decrypt:Media /mnt/gd \
 --cache-tmp-wait-time 1s \
 --poll-interval 15s \
 --log-file /var/log/rclone.log \
+--allow-non-empty \
 --timeout 1h \
 --umask 022 
 ExecStop=/usr/bin/fusermount -uz /mnt/gd
