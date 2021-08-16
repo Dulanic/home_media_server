@@ -3,6 +3,7 @@ Description=RClone Service
 Wants=network-online.target
 After=network-online.target
 
+
 [Service]
 Type=notify
 Environment=RCLONE_CONFIG=/home/dulanic/.config/rclone/rclone.conf
@@ -10,21 +11,20 @@ KillMode=none
 RestartSec=5
 ExecStart=/usr/bin/rclone mount decrypt:Media /mnt/gd \
 --allow-other \
---attr-timeout 1000h \
---buffer-size 128M \
---dir-cache-time 1000h \
+--attr-timeout 60s \
+--buffer-size 512M \
+--dir-cache-time 240h \
+--no-modtime \
 --log-level INFO \
-#--no-modtime \
 --vfs-cache-mode full \
 --cache-tmp-upload-path /mnt/btrfs/rclone \
 --cache-dir=/mnt/btrfs/rclone/cache \
 --vfs-cache-max-size 100G \
---cache-tmp-wait-time 1s \
+--cache-tmp-wait-time 60m \
 --poll-interval 15s \
 --log-file /var/log/rclone.log \
---allow-non-empty \
 --timeout 1h \
---umask 022 
+--umask 022
 ExecStop=/usr/bin/fusermount -uz /mnt/gd
 Restart=on-failure
 User=dulanic
